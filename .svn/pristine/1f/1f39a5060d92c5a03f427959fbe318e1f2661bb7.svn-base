@@ -1,0 +1,380 @@
+﻿#include <iostream>
+#include <string>
+#include <utility>
+#include <queue>
+#include <cassert>
+using namespace std;
+
+template <class Key, class Value>
+class BST
+{
+	struct node
+	{
+		Key key;
+		Value value;
+		node* left;
+		node* right;
+
+		node(Key key, Value value): key(move(key)), value(move(value)), left(nullptr), right(nullptr)
+		{
+		}
+
+		explicit node(node* new_node):key(new_node->key),value(new_node->value),left(new_node->left),right(new_node->right)
+		{
+			
+		}
+	};
+
+	node* root_;
+	int count_;
+
+	node* insert_recursion(node* root, Key key, Value value)
+	{
+		if (root == nullptr)		// if there is no element in the array, return a new pointer as its root
+		{
+			count_++;
+			return new node(key, value);		
+		}
+		if (root->key == key)
+			root->value = value;
+		else if (key < root->key)
+			root->left = insert_recursion(root->left, key, value);
+		else
+			root->right = insert_recursion(root->right, key, value);
+		return root;
+	}
+
+	node* insert_without_recursion(node* root, Key key, Value value)
+	{
+		node* root_copy = root;
+		node* prev = root;
+		bool left = false;
+		if (root == nullptr)
+		{
+			count_++;
+			return new node(key, value);
+		}
+		while (root_copy != nullptr)
+		{
+			if (root_copy->key == key)
+				root_copy->value = value;
+			else if (key < root_copy->key)
+			{
+				prev = root_copy;
+				root_copy = root_copy->left;
+				left = true;
+			}
+			else
+			{
+				prev = root_copy;
+				root_copy = root_copy->right;
+				left = false;
+			}
+		}
+		if (left)
+			prev->left = new node(key, value);
+		else
+			prev->right = new node(key, value);
+		count_++;
+		return root;
+	}
+
+	void destroy(node* node) // free space of binary tree
+	{
+		if (node != nullptr)
+		{
+			destroy(node->left);
+			destroy(node->right);
+			delete node;
+			count_--;
+		}
+	}
+
+	bool contain(Key key, node* root)
+	{
+		if (root == nullptr)
+			return false;
+		if (root->key == key)
+			return true;
+		if (key < root->key)
+			return contain(key, root->left);
+		return contain(key, root->right);
+	}
+
+	Value* search(Key key, node* root)		// return a pointer to the value, so the user can change the value directly
+	{
+		if (root == nullptr)
+			return nullptr;
+		if (root->key == key)
+			return &(root->value);
+		if (key < root->key)
+			return search(key, root->left);
+		return search(key, root->right);
+	}
+
+	static void print_info(node* root)
+	{
+		cout << root->key << "->" << root->value << endl;
+	}
+
+	void pre_order(node* root)
+	{
+		if (root != nullptr)
+		{
+			print_info(root);
+			pre_order(root->left);
+			pre_order(root->right);
+		}
+	}
+
+	void in_order(node* root)
+	{
+		if (root != nullptr)
+		{
+			in_order(root->left);
+			print_info(root);
+			in_order(root->right);
+		}
+	}
+
+	void post_order(node* root)
+	{
+		post_order(root->left);
+		post_order(root->right);
+		print_info(root);
+	}
+
+	node* minimum(node* root)
+	{
+		if (root->left == nullptr)
+			return root;
+		return minimum(root->left);
+	}
+
+	node* maximum(node* root)
+	{
+		if (root->right == nullptr)
+			return root;
+		return maximum(root->right);
+	}
+
+	node* remove_min(node* root)
+	{
+		if (root->left == nullptr)
+		{
+			// This works too
+			/*
+			count--;
+			if (root->right == nullptr)
+			{
+				delete root;
+				return nullptr;
+			}
+			else
+			{
+				node* root_copy = root;
+				root = root->right;
+				delete root_copy;
+				return root;
+			}
+			*/
+
+			node* right_node = root->right;
+			delete root;
+			count_--;
+			return right_node;
+		}
+
+		root->left = remove_min(root->left);
+		return root;
+	}
+
+	node* remove_max(node* root)
+	{
+		if (root->right == nullptr)
+		{
+			node* left_node = root->left;
+			count_--;
+			delete root;
+			return left_node;
+		}
+		root->right = remove_max(root->right);
+		return root;
+	}
+
+	node* remove(node* root, Key key)
+	{
+		if(root == nullptr)
+		{
+			return nullptr;
+		}
+		if(root->key == key)
+		{
+			if(root->left == nullptr)
+			{
+				node* right_node = minimum(root->right);
+				delete root;
+				count_--;
+				return root->right;
+			}
+			if(root->right == nullptr)
+			{
+				node* left_node = minimum(root->left);
+				delete root;
+				count_--;
+				return left_node;	
+			}
+			// auto* s = new node(minimum(root->right));
+			// count_++;
+			// s->right = remove_min(root->right);
+			// s->left = root->left;
+			// count_--;
+			// delete root;
+			// return s;
+
+			auto* s = new node(maximum(root->left));
+			count_++;
+			s->right = root->right;
+			s->left = remove_max(root->left);
+			count_--;
+			delete root;
+			return s;
+
+		}
+		if(key<root->key)
+		{
+			root->left = remove(root->left, key);
+		}
+		else
+		{
+			root->right = remove(root->right, key);
+		}
+		return root;
+	}
+
+public:
+	BST()
+	{
+		root_ = nullptr;
+		count_ = 0;
+	}
+
+	~BST()
+	{
+		destroy(root_);
+	}
+
+	int size() const
+	{
+		return count_;
+	}
+
+	bool is_empty() const
+	{
+		return count_ == 0;
+	}
+
+	void insert(Key key, Value value)
+	{
+		root_ = insert_without_recursion(root_, key, value);
+	}
+
+	bool contain(Key key)
+	{
+		return contain(key, root_);
+	}
+
+	Value* search(Key key)
+	{
+		return search(key, root_);
+	}
+
+	void pre_order() // 前序遍历
+	{
+		pre_order(root_);
+	}
+
+	void in_order()
+	{
+		in_order(root_);
+	}
+
+	void post_order()
+	{
+		post_order(root_);
+	}
+
+	//层序遍历
+	void level_order()
+	{
+		queue<node*> q;
+		q.push(root_);
+		while (!q.empty())
+		{
+			node* node = q.front();
+			q.pop();
+			cout << node->key << endl;
+			if (node->left)
+				q.push(node->left);
+			if (node->right)
+				q.push(node->right);
+		}
+	}
+
+	Key minimum()
+	{
+		assert(count_ != 0);
+		node* min_mode = minimun(root_);
+		return min_mode->key;
+	}
+
+	Key maximum() //	without recursion
+	{
+		assert(count_ != 0);
+		node* max_node = maximum(root_);
+		return max_node->key;
+	}
+
+	void remove_min()
+	{
+		if (root_) // the prerequisite of root
+		{
+			root_ = remove_min(root_);
+		}
+	}
+
+	void remove_max()
+	{
+		if (root_)
+		{
+			root_ = remove_max(root_);
+		}
+	}
+	void remove(Key key)
+	{
+		root_ = remove(root_, key);
+	}
+};
+
+
+int main(int argc, char* argv[])
+{
+	BST<int, string> a{};
+
+	a.insert(3, "xun");
+	a.insert(4, "xun");
+	a.insert(5, "xun");
+	a.insert(6, "xun");
+	a.insert(7, "xun");
+	if (a.search(7) == nullptr)
+		cout << "empty string" << endl;
+	else
+		cout << *a.search(7) << endl;
+
+	cout << "iterate" << endl;
+	a.in_order();
+	a.remove(3);
+	cout << endl;
+	a.in_order();
+	system("pause");
+}
