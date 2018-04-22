@@ -14,32 +14,34 @@ class BST
 		Value value;
 		node* left;
 		node* right;
-		int times; //TODO maintain all functions relative to count
+		int times;
+		int count;
 
-		node(Key key, Value value): key(move(key)), value(move(value)), left(nullptr), right(nullptr), times(1)
+		node(Key key, Value value): key(move(key)), value(move(value)), left(nullptr), right(nullptr), times(1), count(1)
 		{
 		}
 
 		explicit node(node* new_node): key(new_node->key), value(new_node->value), left(new_node->left),
-		                               right(new_node->right), times(new_node->times)
+		                               right(new_node->right), times(new_node->times), count(new_node->count)
 		{
 		}
 	};
 
 	node* root_;
-	int count_;
+	int num_of_element_;
 
 	node* insert_recursion(node* root, Key key, Value value)
 	{
 		if (root == nullptr) // if there is no element in the array, return a new pointer as its root
 		{
-			count_++;
+			num_of_element_++;
 			return new node(key, value);
 		}
 		++root->times;
 
 		if (root->key == key)
 		{
+			++root->count;
 			root->value = value;
 		}
 		else if (key < root->key)
@@ -53,14 +55,14 @@ class BST
 		return root;
 	}
 
-	node* insert_without_recursion(node* root, Key key, Value value) 
+	node* insert_without_recursion(node* root, Key key, Value value)
 	{
 		node* root_copy = root;
 		node* prev = root;
 		bool left = false;
 		if (root == nullptr)
 		{
-			count_++;
+			num_of_element_++;
 			return new node(key, value);
 		}
 		while (root_copy != nullptr)
@@ -68,6 +70,7 @@ class BST
 			++root_copy->times;
 			if (root_copy->key == key)
 			{
+				++root_copy->count;
 				root_copy->value = value;
 				return root;
 			}
@@ -88,7 +91,7 @@ class BST
 			prev->left = new node(key, value);
 		else
 			prev->right = new node(key, value);
-		count_++;
+		num_of_element_++;
 		return root;
 	}
 
@@ -99,7 +102,7 @@ class BST
 			destroy(node->left);
 			destroy(node->right);
 			delete node;
-			count_--;
+			num_of_element_--;
 		}
 	}
 
@@ -195,7 +198,7 @@ class BST
 
 			node* substitute_node = root->right;
 			delete root;
-			count_--;
+			num_of_element_--;
 			return substitute_node;
 		}
 
@@ -209,7 +212,7 @@ class BST
 		if (root->right == nullptr)
 		{
 			node* left_node = root->left;
-			count_--;
+			num_of_element_--;
 			delete root;
 			return left_node;
 		}
@@ -229,30 +232,30 @@ class BST
 			{
 				node* right_node = root->right;
 				delete root;
-				count_--;
+				num_of_element_--;
 				return root->right;
 			}
 			if (root->right == nullptr)
 			{
 				node* left_node = root->left;
 				delete root;
-				count_--;
+				num_of_element_--;
 				return left_node;
 			}
 			// auto* s = new node(minimum(root->right));
-			// count_++;
+			// num_of_element_++;
 			// s->right = remove_min(root->right);
 			// s->left = root->left;
-			// count_--;
+			// num_of_element_--;
 			// delete root;
 			// return s;
 
 			auto* s = new node(maximum(root->left));
 			s->times = root->times - 1;
-			count_++;
+			num_of_element_++;
 			s->right = root->right;
 			s->left = remove_max(root->left);
-			count_--;
+			num_of_element_--;
 			delete root;
 			return s;
 		}
@@ -304,11 +307,22 @@ class BST
 	}
 
 
+	int successor(Key key, node* root, int right_bound)
+	{
+		if (root->key == key)
+			return right_bound;
+		if (root == nullptr)
+			return -1;
+		if (key < root->key)
+			return successor(key, root->left, root->key);
+		return successor(key, root->right, right_bound);
+	}
+
 public:
 	BST()
 	{
 		root_ = nullptr;
-		count_ = 0;
+		num_of_element_ = 0;
 	}
 
 	~BST()
@@ -318,12 +332,12 @@ public:
 
 	int size() const
 	{
-		return count_;
+		return num_of_element_;
 	}
 
 	bool is_empty() const
 	{
-		return count_ == 0;
+		return num_of_element_ == 0;
 	}
 
 	void insert(Key key, Value value)
@@ -376,14 +390,14 @@ public:
 
 	Key minimum()
 	{
-		assert(count_ != 0);
+		assert(num_of_element_ != 0);
 		node* min_mode = minimun(root_);
 		return min_mode->key;
 	}
 
 	Key maximum() //	without recursion
 	{
-		assert(count_ != 0);
+		assert(num_of_element_ != 0);
 		node* max_node = maximum(root_);
 		return max_node->key;
 	}
@@ -423,18 +437,46 @@ public:
 		return find_key(key, root_);
 	}
 
+
 	Key successor(Key key)
 	{
+		if (maximum() <= key)
+			return -1;
 		node* root = find_key(key);
-		node* s = minimum(root->right);
-		return s->key;
+		if (root == nullptr)
+			return -1;
+		if (root->right != nullptr)
+		{
+			node* s = minimum(root->right);
+			return s->key;
+		}
+		return successor(key, root_, root_->key);
 	}
 
-	Key predecessor(Key key)
+	Key predecessor(Key key,node* root,Key left_bound)
 	{
+		if (root->key == key)
+			return left_bound;
+		if (root == nullptr)
+			return Key{};
+		if (key < root->key)
+			return predecessor(key, root->left, left_bound);
+		return predecessor(key, root->right, root->key);
+	}
+
+	Key predecessor(Key key)		//TODO change it as
+	{
+		if (minimum() >= key)
+			return -1;
 		node* root = find_key(key);
+		if (root == nullptr)
+			return -1;
+		if(root->left!=nullptr)
+		{
 		node* p = maximum(root->left);
 		return p->key;
+		}
+		return predecessor(key, root_, root_->key);
 	}
 
 	node* floor(Key key)
@@ -449,6 +491,22 @@ public:
 		if (root_ != nullptr)
 			return ceil(key, root_, root_);
 		return nullptr;
+	}
+
+	int get_count(Key key, node* root)
+	{
+		if (root == nullptr)
+			return 0;
+		if (root->key == key)
+			return root->count;
+		if (key < root->key)
+			return get_count(key, root->left);
+		return get_count(key, root->right);
+	}
+
+	int get_count(Key key)
+	{
+		return get_count(key, root_);
 	}
 
 	static int ranking(Key key, node* root, int rank)
@@ -496,19 +554,36 @@ int main(int argc, char* argv[])
 
 	a.insert(41, "xun");
 	a.insert(22, "xun");
+	a.insert(22, "xun");
+	a.insert(22, "xun");
+	a.insert(22, "xun");
+	a.insert(22, "xun");
 	a.insert(58, "xun");
+	a.insert(15, "xun");
 	a.insert(15, "xun");
 	a.insert(33, "xun");
 	a.insert(50, "xun");
 	a.insert(63, "xun");
-	a.insert(13, "xun");
+	a.insert(63, "xun");
+	a.insert(63, "xun");
+	a.insert(63, "xun");
+	a.insert(63, "xun");
+	a.insert(63, "xun");
+	a.insert(63, "xun");
 	a.insert(13, "xun");
 	a.insert(37, "xun");
 	a.insert(42, "xun");
+	a.insert(42, "xun");
+	a.insert(42, "xun");
 	a.insert(53, "xun");
 	a.level_order();
-	cout << "rank of 63 is " << a.rank(63) << endl;
-	cout << "the key " << a.select(1) << " has the ranking of 1" << endl;
+	// cout << "rank of 63 is " << a.rank(63) << endl;
+	// cout << "the key " << a.select(1) << " has the ranking of 1" << endl;
+	// cout << " how many 50? " << a.get_count(50) << endl;
+	// cout << " how many 22? " << a.get_count(22) << endl;
+	// cout << " how many 15? " << a.get_count(15) << endl;
+	cout << a.successor(43) << endl;
+
 
 	system("pause");
 }
